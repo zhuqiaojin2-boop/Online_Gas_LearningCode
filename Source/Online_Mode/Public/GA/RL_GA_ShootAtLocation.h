@@ -9,6 +9,7 @@
 /**
  * 
  */
+ class URL_AS_Base;
 UCLASS()
 class ONLINE_MODE_API URL_GA_ShootAtLocation : public URL_GA_Base
 {
@@ -28,12 +29,19 @@ private:
 		const FGameplayAbilityActivationInfo ActivationInfo, 
 		const FGameplayEventData* TriggerEventData) override;
 
+
+
 	UPROPERTY(EditDefaultsOnly,Category = "RL_GA")
 	float AmmoPadding{1.0f};
 protected: 
+	UFUNCTION()
+	void OnProjectileHit(FGameplayEventData EventData);
 
 	UPROPERTY(EditDefaultsOnly,Category = "RL_GA")
 	TSubclassOf<UGameplayEffect>DamageEffectClass;
+
+	UPROPERTY(VisibleAnywhere,Category = "RL_GA")
+	FGameplayEffectHandleSpecContainer AllEffectHandlesContainer;
 
 	UPROPERTY(EditDefaultsOnly,Category = "RL_GA")
 	float BaseDamage;
@@ -44,7 +52,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly,Category = "RL_GA")
 	TSubclassOf<UGameplayEffect>AmmoCostEffectClass;
 
-	UPROPERTY(EditDefaultsOnly,Category = "RL_GA")
-	TSubclassOf<AActor>AmmoActorClass;
+	
 };
 

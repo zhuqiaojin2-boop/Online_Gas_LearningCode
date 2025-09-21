@@ -10,7 +10,6 @@
 
 ARL_PS_Base::ARL_PS_Base()
 {
-	PrimaryActorTick.bCanEverTick = true;
 	if(RL_ASC == nullptr)
 		RL_ASC = CreateDefaultSubobject<URL_ASC_Base>(TEXT("RL_AbilitySystemComponent"));
 	if(RL_AS == nullptr)	
@@ -25,11 +24,23 @@ ARL_PS_Base::ARL_PS_Base()
 
 UAbilitySystemComponent* ARL_PS_Base::GetAbilitySystemComponent() const
 {
+	if(!RL_ASC) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("RL_ASC is nullptr"));
+		return NULL;
+	}
+	
 	return RL_ASC;
+
 }
 
 URL_AS_Player* ARL_PS_Base::GetAttributeSet() const
 {
+	if(!RL_AS)
+	{
+		UE_LOG(LogTemp, Error, TEXT("RL_AS is nullptr"));
+		return NULL;
+	}
 	return RL_AS;
 }
 
@@ -58,10 +69,7 @@ void ARL_PS_Base::BeginPlay()
 	}
 }
 
-void ARL_PS_Base::Tick(float DeltaTime)
-{
-	URL_AS_Player* Test_AS = RL_AS;
-}
+
 
 //void ARL_PS_Base::InitializeAbilitySystem()
 //{

@@ -13,7 +13,8 @@ class ARL_Actor_Weapon;
 class UAbilitySystemComponent;
 class URL_GA_Base;
 class URL_GE_Base;
-class URL_AS_Player;
+class URL_AS_Base;
+class URL_ASC_Base;
 
 UCLASS()
 class ONLINE_MODE_API ARL_Character_Base : public ACharacter, public IAbilitySystemInterface,public IRL_Interface_Death
@@ -27,22 +28,24 @@ public:
 	// 实现 IAbilitySystemInterface 的接口
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	// 获取属性集的函数
-	UFUNCTION(BlueprintPure, Category = "Abilities")
-	URL_AS_Player* GetAttributeSetFromPS() const;
-
+	virtual URL_AS_Base* GetAttributeSet() const;
 	// 获取武器的函数
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	ARL_Actor_Weapon* GetWeapon() const;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RL")
 	TSubclassOf<ARL_Actor_Weapon> WeaponClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RL")
 	FName WeaponSocketName;
 
 	// 死亡处理
 	virtual void HandleDeath_Implementation() override;
+
+	//void SetCharacter_AS(URL_AS_Base* NewCharacter_AS);
+
+	// 初始化 ASC 的函数
+	virtual void InitializeAbilitySystem();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -59,10 +62,10 @@ protected:
 	UPROPERTY(Replicated)
 	TObjectPtr<ARL_Actor_Weapon> Weapon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RL")
 	TArray<TSubclassOf<URL_GA_Base>> DefaultAbilities;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RL")
 	TSubclassOf<URL_GE_Base> DefaultAttributesEffect;
 
 	// 服务器上生成并装备武器的函数
@@ -71,7 +74,7 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDeath();
 
+	void ApplyDefaultAttributesEffect(UAbilitySystemComponent* ASC);
 private:
-	// 初始化 ASC 的函数
-	void InitializeAbilitySystem();
+	
 };

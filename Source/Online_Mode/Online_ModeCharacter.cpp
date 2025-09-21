@@ -29,6 +29,8 @@ void AOnline_ModeCharacter::Server_SetIsAiming_Implementation(bool bIsAiming)
 	IsAiming = bIsAiming;
 }
 
+
+
 AOnline_ModeCharacter::AOnline_ModeCharacter()
 {
 	// Set size for collision capsule

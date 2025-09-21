@@ -8,7 +8,7 @@
 #include <Net/UnrealNetwork.h>
 #include <Kismet/KismetSystemLibrary.h>
 #include "Weapon/RL_Actor_Weapon.h"
-#include "AS/RL_AS_Player.h"
+#include "AS/RL_AS_Base.h"
 #include "GameFramework/CharacterMovementComponent.h"
 // Sets default values
 ARL_Character_Base::ARL_Character_Base()
@@ -33,13 +33,13 @@ ARL_Actor_Weapon* ARL_Character_Base::GetWeapon() const
 void ARL_Character_Base::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	InitializeAbilitySystem();
+    InitializeAbilitySystem();
 }
 
 void ARL_Character_Base::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	InitializeAbilitySystem();
+    InitializeAbilitySystem();
 }
 
 void ARL_Character_Base::EquipWeapon()
@@ -61,8 +61,11 @@ void ARL_Character_Base::EquipWeapon()
         FActorSpawnParameters SpawnParams;
         SpawnParams.Owner = this;       // 设置所有者
         SpawnParams.Instigator = this;  // 设置发起者
+
         Weapon = GetWorld()->SpawnActor<ARL_Actor_Weapon>(WeaponClass, SpawnParams);
+
         UE_LOG(LogTemp, Warning, TEXT("Spawned Weapon: %s"), *Weapon->GetName());
+
         UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Spawned Weapon"));
         if (Weapon)
         {
@@ -80,61 +83,6 @@ void ARL_Character_Base::EquipWeapon()
             );
         }
     }
-}
-void ARL_Character_Base::Multicast_OnDeath_Implementation()
-{
-    GetMesh()->SetSimulatePhysics(true);
-    GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-    GetCharacterMovement()->DisableMovement();
-
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (PC && PC->IsLocalController())
-    {
-        DisableInput(PC);
-    }
-    //Destroy();
-}
-UAbilitySystemComponent* ARL_Character_Base::GetAbilitySystemComponent() const
-{
-    ARL_PS_Base* PS = GetPlayerState<ARL_PS_Base>();
-    return PS ? PS->GetAbilitySystemComponent() : nullptr;
-}
-
-//void ARL_Character_Base::SetAbilitySystemComponent()
-//{
-//    /*if (const ARL_PS_Base* PS = Cast<ARL_PS_Base>(GetPlayerState()))
-//    {
-//        LocalASC = Cast<URL_ASC_Base>(PS->GetAbilitySystemComponent());
-//    }
-//    LocalASC = CreateDefaultSubobject<URL_ASC_Base>(TEXT("AbilitySystemComponent"));*/
-//}
-
-//TODO:Debug Test 后续需要完善武器拾取切换逻辑
-/*void ARL_Character_Base::OnRep_Weapon()
-{
-    if (Weapon)
-    {
-        // 客户端也需要执行附加逻辑
-        FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, true); // SnapToTarget 简写
-        Weapon->AttachToComponent(GetMesh(), AttachmentRules, WeaponSocketName);
-    }
-    // 如果武器被设置为空 (比如卸载了)，就分离旧的武器
- /*   else if (OldWeapon)
-    {
-        OldWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-    }*/
-
-//}
-
-// Called when the game starts or when spawned
-URL_AS_Player* ARL_Character_Base::GetAttributeSetFromPS()const
-{
-    ARL_PS_Base* PS = GetPlayerState<ARL_PS_Base>();
-    if (PS)
-    {
-        return PS->GetAttributeSet();
-    }
-    return nullptr;
 }
 
 void ARL_Character_Base::HandleDeath_Implementation()
@@ -155,48 +103,103 @@ void ARL_Character_Base::HandleDeath_Implementation()
     }
 }
 
+void ARL_Character_Base::Multicast_OnDeath_Implementation()
+{
+    GetMesh()->SetSimulatePhysics(true);
+    GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+    GetCharacterMovement()->DisableMovement();
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (PC && PC->IsLocalController())
+    {
+        DisableInput(PC);
+    }
+    if(Weapon) Weapon->Destroy();
+    Destroy();
+}
+
+UAbilitySystemComponent* ARL_Character_Base::GetAbilitySystemComponent() const
+{
+    return nullptr;
+}
+
+URL_AS_Base* ARL_Character_Base::GetAttributeSet() const
+{
+    return nullptr;
+}
+//TODO:Debug Test 后续需要完善武器拾取切换逻辑
+/*void ARL_Character_Base::OnRep_Weapon()
+{
+    if (Weapon)
+    {
+        // 客户端也需要执行附加逻辑
+        FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, true); // SnapToTarget 简写
+        Weapon->AttachToComponent(GetMesh(), AttachmentRules, WeaponSocketName);
+    }
+    // 如果武器被设置为空 (比如卸载了)，就分离旧的武器
+ /*   else if (OldWeapon)
+    {
+        OldWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+    }*/
+
+//}
+
 void ARL_Character_Base::BeginPlay()
 {
 	Super::BeginPlay();
     EquipWeapon();//TODO:Debug Test 后续需要完善武器拾取逻辑
     //GetAttributeSet()->OnPlayerDeath.AddDynamic(this, &ARL_Character_Base::HandlePlayerDeath);
-   
+}
+
+void ARL_Character_Base::ApplyDefaultAttributesEffect(UAbilitySystemComponent* ASC)
+{
+    if (DefaultAttributesEffect)
+    {
+        FGameplayEffectContextHandle ContextHandle;
+
+        if (ASC) { ContextHandle = ASC->MakeEffectContext(); }
+
+        ContextHandle.AddSourceObject(this);
+        FGameplayEffectSpecHandle SpecHandle;
+        if (ASC) SpecHandle = ASC->MakeOutgoingSpec(DefaultAttributesEffect, 1, ContextHandle);
+
+        if (SpecHandle.IsValid())
+        {
+            if (SpecHandle.Data.Get())
+                ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+        }
+    }
 }
 
 void ARL_Character_Base::InitializeAbilitySystem()
 {
-     if(!HasAuthority()) return;
+    if (!HasAuthority()) return;
 
-   //TODO:这个是角色基类的ASC初始化逻辑, 应当包含了怪物的初始化逻辑,但是怪物没有PS, 需要修改 
-      ARL_PS_Base* PS = GetPlayerState<ARL_PS_Base>();
-     if (!PS)
-     {
-       return;
-     }
-
-   URL_ASC_Base* ASC = Cast<URL_ASC_Base>(PS->GetAbilitySystemComponent());
-
-    if (ASC)
+    UAbilitySystemComponent* ASC = nullptr;
+    if (!ASC)
     {
-        ASC->InitAbilityActorInfo(PS, this);
+        return;
     }
-
-	// 应用 GE 来设置初始属性值 (例如 Health=100)
-	if (DefaultAttributesEffect)
-	{
-        FGameplayEffectContextHandle ContextHandle;
-
-		if(ASC){ ContextHandle = ASC->MakeEffectContext();}
-
-		ContextHandle.AddSourceObject(this);
-        FGameplayEffectSpecHandle SpecHandle;
-        if (ASC) SpecHandle = ASC->MakeOutgoingSpec(DefaultAttributesEffect, 1, ContextHandle);
-
-		if (SpecHandle.IsValid())
-		{
-            if(SpecHandle.Data.Get())
-                ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
+    AActor* OwnerActor = nullptr;
+    // 1. 尝试获取任何类型的PlayerState
+    APlayerState* PS = GetPlayerState();
+    if (PS)
+    {
+        OwnerActor = PS;
+        // ASC也必须从PS获取，这才是正确的、唯一的来源。
+        ASC= Cast<IAbilitySystemInterface>(PS)->GetAbilitySystemComponent();
+    }
+    else
+    {
+        OwnerActor = this;
+        // ASC也从自己身上获取。
+        ASC = GetAbilitySystemComponent();
+    }
+    ASC->InitAbilityActorInfo(OwnerActor, this);
+    // 5. 用最终确定的Owner和Avatar进行初始化 (客户端和服务器都必须执行!)
+    if (DefaultAttributesEffect)
+    {
+        ApplyDefaultAttributesEffect(ASC);
+    }
 }
 

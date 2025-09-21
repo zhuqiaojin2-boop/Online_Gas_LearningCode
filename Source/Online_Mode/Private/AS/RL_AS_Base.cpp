@@ -5,6 +5,18 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
 #include "Interface/RL_Interface_Death.h"
+#include "Character/RL_Character_Base.h"
+#include "AbilitySystemComponent.h"
+URL_AS_Base::URL_AS_Base()
+	: Strength(1.f)
+	, MaxHealth(1.f)
+	, Health(0.f)
+	, Defence(0.f)
+	, Attack_frequency(1.0f)
+	, Speed(1.0f)
+	, Level(1.0f)
+	, Damage(0.0f) {
+}
 
 void URL_AS_Base::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
@@ -17,8 +29,12 @@ void URL_AS_Base::PreAttributeChange(const FGameplayAttribute& Attribute, float&
 	}
 }
 
+
+
 void URL_AS_Base::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
+	Super::PostGameplayEffectExecute(Data);
+
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
 		float LocalDamage = GetDamage();
@@ -29,32 +45,36 @@ void URL_AS_Base::PostGameplayEffectExecute(const FGameplayEffectModCallbackData
 		//最后伤害值减去75%防御力
 		LocalDamage -= 0.75 * GetDefence();
 
-		float LocalHealth = GetHealth() - LocalDamage;
-		if(LocalHealth <= 0.f) 
-		{		
-			AActor* OwningActor = GetOwningActor();
-			if (OwningActor)
-			{
-				// **关键**：将死亡事件通知给Actor
-				// 我们可以定义一个接口或者直接Cast
-				IRL_Interface_Death* DeathInterface = Cast<IRL_Interface_Death>(OwningActor);
-				if (DeathInterface)
-				{
-					DeathInterface->HandleDeath();
-				}
+		const float OldHealth = GetHealth();
+		float NewHealth = FMath::Clamp(OldHealth - LocalDamage, 0.f, GetMaxHealth());
+		SetHealth(NewHealth);
 
-				// 或者，如果你确定Owner一定是你的Character
-				// ARL_Character_Base* Character = Cast<ARL_Character_Base>(OwningActor);
-				// if(Character)
-				// {
-				//     Character->HandleDeath();
-				// }
+		// 判断是否死亡 (检查旧血量>0是为了防止重复触发)
+		if (OldHealth > 0.f && NewHealth <= 0.f)
+		{
+			// 1. 获取拥有此AS的ASC
+			UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+			if (ASC)
+			{
+				// 2. 通过ASC，获取AvatarActor
+				AActor* AvatarActor = ASC->GetAvatarActor();
+
+				if (AvatarActor)
+				{
+					// 3. 在AvatarActor上检查并调用死亡接口
+					IRL_Interface_Death* DeathInterface = Cast<IRL_Interface_Death>(AvatarActor);
+					if (DeathInterface)
+					{
+						DeathInterface->Execute_HandleDeath(AvatarActor);
+					}
+					else
+					{
+						// 添加日志
+						UE_LOG(LogTemp, Error, TEXT("%s's AvatarActor %s does not implement DeathInterface!"), *GetName(), *AvatarActor->GetName());
+					}
+				}
 			}
-			SetHealth(0.f);
-			//BroadcastPlayerDeath();
 		}
-		SetHealth(LocalHealth);
-		
 	}
 }
 
@@ -108,9 +128,4 @@ void URL_AS_Base::OnRep_Health(const FGameplayAttributeData& OldHealth)
 void URL_AS_Base::OnRep_Level(const FGameplayAttributeData& OldLevel)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(URL_AS_Base, Level, OldLevel);
-}
-
-void URL_AS_Base::BroadcastPlayerDeath()
-{
-	//OnPlayerDeath.Broadcast();
 }

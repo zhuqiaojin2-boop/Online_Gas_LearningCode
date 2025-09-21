@@ -6,7 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "Abilities/GameplayAbility.h"
 #include <GameFramework/ProjectileMovementComponent.h>
+#include "Container/RL_Container_GEContainer.h"
 #include "RL_Actor_Bullet.generated.h"
+
+struct FGameplayEffectHandleSpecContainer;
 
 class USphereComponent;
 UCLASS()
@@ -18,10 +21,10 @@ public:
 	// Sets default values for this actor's properties
 	ARL_Actor_Bullet();
 
-	void SetDamageEffectSpecHandle(FGameplayEffectSpecHandle NewDamageEffectSpecHandle) { DamageEffectSpecHandle = NewDamageEffectSpecHandle;}
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bullet")
-	FGameplayEffectSpecHandle DamageEffectSpecHandle;
+	FGameplayEffectHandleSpecContainer HandleSpecContainer;
+
+	//void SetDamageEffectSpecHandle(FGameplayEffectSpecHandle NewDamageEffectSpecHandle) { HandleSpecContainer = NewDamageEffectSpecHandle;}
 
 private:
 	

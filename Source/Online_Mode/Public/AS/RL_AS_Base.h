@@ -23,6 +23,7 @@ class ONLINE_MODE_API URL_AS_Base : public UAttributeSet
 {
 	GENERATED_BODY()
 public:
+	URL_AS_Base();
 
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 
@@ -93,9 +94,5 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_Level(const FGameplayAttributeData& OldLevel);
-	
 
-	//这只是个中转函数,大概率需要广播委托
-	UFUNCTION()
-	virtual void BroadcastPlayerDeath();
 };

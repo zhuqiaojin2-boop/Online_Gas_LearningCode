@@ -20,8 +20,9 @@ public:
     URL_AS_Player* GetAttributeSet()const;
 
     virtual void BeginPlay() override;
-    virtual void Tick(float DeltaTime) override;
+
 private:
+
     UPROPERTY(VisibleAnywhere, Category = "RL_Gas")
     TObjectPtr<URL_ASC_Base> RL_ASC;
 

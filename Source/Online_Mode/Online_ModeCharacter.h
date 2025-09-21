@@ -49,6 +49,7 @@ class AOnline_ModeCharacter : public ARL_Character_Base
 
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	//UInputAction* ShootAction;
+
 public:
 	AOnline_ModeCharacter();
 

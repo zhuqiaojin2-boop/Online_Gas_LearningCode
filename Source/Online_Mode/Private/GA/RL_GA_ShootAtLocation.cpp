@@ -6,7 +6,9 @@
 #include "AS/RL_AS_Player.h"
 #include "Actor/RL_Actor_Bullet.h"
 #include "Weapon/RL_Actor_Weapon.h"
-
+#include "Container/RL_Container_GEContainer.h"
+#include <Abilities/Tasks/AbilityTask_WaitGameplayEvent.h>
+#include "PS/RL_PS_Base.h"
 
 bool URL_GA_ShootAtLocation::CanActivateAbility(
 const FGameplayAbilitySpecHandle Handle,
@@ -17,33 +19,23 @@ OUT FGameplayTagContainer* OptionalRelevantTags) const
 {
 	if(!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
 	// 检查弹药是否足够
-	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	if (ASC)
-	{
-		const float CurrentAmmo = ASC->GetNumericAttribute(URL_AS_Player::GetLeftAmmosInMagazineAttribute());
-		//debug
-		const AOnline_ModeCharacter* Character = Cast<AOnline_ModeCharacter>(ActorInfo->AvatarActor.Get());
-		if (!Character)
-		{
-			return false;
-		}
-		const URL_AS_Player* PlayerAttributeSet = Character->GetAttributeSetFromPS();
-		if (PlayerAttributeSet)
-		{
-			// 5. 现在，我们可以直接从属性集实例中获取属性值了
-			const float TestCurrentAmmo = PlayerAttributeSet->GetLeftAmmosInMagazine();
+	const float CurrentAmmo = GetAttribute(ActorInfo,URL_AS_Player::GetLeftAmmosInMagazineAttribute());
+		
+	return CurrentAmmo > 0;
+}
 
-			// 6. 用获取到的值进行逻辑判断
-			return TestCurrentAmmo > 0;
-		}
-		return CurrentAmmo > 0;
- /*   if (!Character)
-    {
-        return false;
-    }
-	}
-	return false;*/}
-	return false;
+void URL_GA_ShootAtLocation::OnProjectileHit(FGameplayEventData EventData)
+{
+	FGameplayAbilityTargetDataHandle TargetData = EventData.TargetData;
+
+	// 3. 将目标数据添加到SpecContainer中
+	AllEffectHandlesContainer.TargetData = TargetData;
+
+	// 4. 应用所有效果！
+	ApplyEffectForEachSpecHandles(AllEffectHandlesContainer);
+
+	// 5. 伤害逻辑处理完毕，现在可以结束技能了
+	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }
 
 void URL_GA_ShootAtLocation::ActivateAbility(
@@ -52,12 +44,12 @@ const FGameplayAbilityActorInfo* ActorInfo,
 const FGameplayAbilityActivationInfo ActivationInfo, 
 const FGameplayEventData* TriggerEventData)
 {
-	/*if (!HasAuthority(&ActivationInfo))
+	if (!HasAuthority(&ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 
 		return;
-	}*/
+	}
 	bool bIsPredicting = (ActivationInfo.ActivationMode == EGameplayAbilityActivationMode::Predicting);
 
 	//TODO:封装函数,太乱了
@@ -76,7 +68,6 @@ const FGameplayEventData* TriggerEventData)
 	if (ActorInfo->IsNetAuthority())
 	{
 	AOnline_ModeCharacter* LocalCharacter = Cast<AOnline_ModeCharacter>(ActorInfo->AvatarActor);
-	//USkeletalMeshComponent* WeaponMesh = LocalCharacter->GetWeapon()->WeaponMesh;
 
 	if (!LocalCharacter || !LocalCharacter->GetWeapon())
 	{
@@ -99,11 +90,7 @@ const FGameplayEventData* TriggerEventData)
 	{
 		LocalCharacter->GetActorEyesViewPoint(TraceStart, ViewRotation);
 	}
-	/*LocalCharacter->GetActorEyesViewPoint(TraceStart, ViewRotation);
-	if (Controller)
-	{
-		ViewRotation = Controller->GetControlRotation();
-	}*/
+	
 	// 2. 计算射线的终点
 	float TraceDistance = 10000.0f; // 设置一个足够远的追踪距离
 	TraceEnd = TraceStart + ViewRotation.Vector() * TraceDistance;
@@ -117,7 +104,6 @@ const FGameplayEventData* TriggerEventData)
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, CollisionParams))
 	{
-		// 如果射线命中了某个物体，更新目标点为命中点
 		HitLocation = HitResult.Location;
 	}
 
@@ -126,8 +112,10 @@ const FGameplayEventData* TriggerEventData)
 	// =========================================================================
 
 	// 4. 获取武器枪口的位置作为子弹的生成点
-	USkeletalMeshComponent* WeaponMesh = LocalCharacter->GetWeapon()->WeaponMesh;
-	//FVector MuzzleLocation = WeaponMesh->GetSocketLocation(FName("MuzzleSocket")); // 假设你的枪口插槽叫 "MuzzleSocket"
+	ARL_Actor_Weapon* CurrentWeapon = LocalCharacter->GetWeapon();
+
+	USkeletalMeshComponent* WeaponMesh = CurrentWeapon->WeaponMesh;
+
 	FVector MuzzleLocation{0,0,0};
 
 	if (LocalCharacter->ProjectileSpawnPoint)
@@ -135,53 +123,80 @@ const FGameplayEventData* TriggerEventData)
 		// 如果存在，就用它的世界位置作为生成点。这个位置不受动画影响！
 		MuzzleLocation = LocalCharacter->ProjectileSpawnPoint->GetComponentLocation();
 	}
-	// 添加日志来调试
-	/*if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Current Health: %s"), GetHealth()));
-	}*/
 	// 5. 计算从枪口指向目标点(HitLocation)的最终旋转方向
 	FRotator FinalRotation = (HitLocation - MuzzleLocation).Rotation();
 
-	FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
-		
-	if (DamageSpecHandle.IsValid())
+	FGameplayEffectContainer Container = CurrentWeapon->WeaponEffect;
+
+	FGameplayEffectHandleSpecContainer HandleSpecContainer = ConstructHandleSpecsFromContainer(Container);
+
+	for (FGameplayEffectSpecHandle& SpecHandle : HandleSpecContainer.EffectSpecHandles)
 	{
-		const URL_AS_Base* LocalAttributes = Cast<URL_AS_Base>(ActorInfo->AbilitySystemComponent->GetAttributeSet(URL_AS_Base::StaticClass()));
-		const float StrengthBonus = LocalAttributes ? LocalAttributes->GetStrength() * 0.5f : 0.f; // 假设力量对伤害有加成
-		const float FinalDamage = BaseDamage + StrengthBonus;
-
-		DamageSpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Damage")), FinalDamage);
+		if (SpecHandle.IsValid() && SpecHandle.Data.IsValid())
+		{
+			// **核心修改：使用正确的 UGameplayEffect 类型**
+			const UGameplayEffect* EffectDef = SpecHandle.Data->Def;
+			if (!EffectDef)
+			{
+				continue;
+			}
+			// **通过检查GE自身的Tag来判断其类型**
+			// EffectDef->InheritedTags 是这个GE从其蓝图或C++父类继承的所有Tag
+			if (EffectDef->GetAssetTags().HasTag(FGameplayTag::RequestGameplayTag(FName("Effect.Damage"))))
+			{
+				// 这是一个伤害类型的GE
+				 float FinalDamage; 
+				 CalculateFinalDamage(FinalDamage, GetAttribute(ActorInfo, URL_AS_Player::GetStrengthAttribute()));
+				 SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Damage")), FinalDamage);
+			}
+			else if (EffectDef->GetAssetTags().HasTag(FGameplayTag::RequestGameplayTag(FName("Effect.Heal"))))
+			{
+				//TODO:
+				// 这是一个治疗类型的GE
+				// const float FinalHealing = CalculateFinalHealing(...);
+				// SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Healing")), FinalHealing);
+			}
+			else if (EffectDef->GetAssetTags().HasTag(FGameplayTag::RequestGameplayTag(FName("Effect.Slow"))))
+			{
+				//TODO:
+				// 这是一个减速类型的GE
+			}
+			else if (EffectDef->GetAssetTags().HasTag(FGameplayTag::RequestGameplayTag(FName("Effect.Fast"))))
+			{
+				//TODO:
+				// 这是一个减速类型的GE
+			}
+		}
 	}
+	//将HandleSpecContainer储存到AllEffectHandlesContainer中.GA
+	AllEffectHandlesContainer = HandleSpecContainer;
 
-	if (GetWorld() && AmmoActorClass)	
+	//TODO:检查当前武器发射子弹类型,散射弹,单发弹,连发弹,等等,从武器身上获取子弹类型AmmoActorClass,然后根据子弹类型创建子弹
+	if (GetWorld() && CurrentWeapon->AmmoActorClass)
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		SpawnParams.Instigator = LocalCharacter;
 		FVector SpawnLocation = MuzzleLocation + FinalRotation.Vector() * AmmoPadding ;
 
-
 		FTransform SpawnTransform(FinalRotation, SpawnLocation);
 		// 使用 `SpawnActorDeferred` 来确保我们可以在生成后设置参数
 			ARL_Actor_Bullet* Ammo = GetWorld()->SpawnActorDeferred<ARL_Actor_Bullet>(
-			AmmoActorClass,
+			CurrentWeapon->AmmoActorClass,
 			SpawnTransform,
 			LocalCharacter,
 			LocalCharacter,
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 		);
 
-		if (Ammo)
-		{
-		//	 **关键步骤**: 将配置好的 Damage Spec Handle 传递给子弹
-			Ammo->SetDamageEffectSpecHandle(DamageSpecHandle);
-		//  完成生成
-			Ammo->FinishSpawning(SpawnTransform);
-		}
+		UAbilityTask_WaitGameplayEvent* WaitHitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag(FName("Event.Projectile.Hit")));
+		// 将我们的回调函数绑定到Task的委托上
+		WaitHitEventTask->EventReceived.AddDynamic(this, &URL_GA_ShootAtLocation::OnProjectileHit);
+		
+		WaitHitEventTask->ReadyForActivation();
 	}
-	}
+	
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
+	}
 }
 
-	

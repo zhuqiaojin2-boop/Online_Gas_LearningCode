@@ -2,7 +2,9 @@
 
 
 #include "AS/RL_AS_Player.h"
-#include <Net/UnrealNetwork.h>
+#include "Net/UnrealNetwork.h"
+#include "GameplayEffectExtension.h"
+#include "Interface/RL_Interface_Death.h"
 
 void URL_AS_Player::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {	

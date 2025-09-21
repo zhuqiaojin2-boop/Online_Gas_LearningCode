@@ -5,17 +5,34 @@
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
 #include "../RL_Enum_AbilityInputID.h"
+#include "Container/RL_Container_GEContainer.h"
 #include "RL_GA_Base.generated.h"
 
 /**
  * 
  */
+ struct FGameplayEffectContainer;
+ struct FGameplayEffectHandleSpecContainer;
 UCLASS()
 class ONLINE_MODE_API URL_GA_Base : public UGameplayAbility
 {
 	GENERATED_BODY()
 
 public:
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = GameplayEffects)
+	TMap<FGameplayTag, FGameplayEffectContainer> EffectContainerMap;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	ERL_AbilityInputID AbilityInputID = ERL_AbilityInputID::None; // 默认不绑定任何输入
+	ERL_AbilityInputID AbilityInputID = ERL_AbilityInputID::None; // 默认不绑定任何输入	
+
+	FGameplayEffectHandleSpecContainer ConstructHandleSpecsFromContainer(FGameplayEffectContainer Container); // 保存当前的AbilitySpecHandle
+
+	TArray<FActiveGameplayEffectHandle> ApplyEffectForEachSpecHandles(FGameplayEffectHandleSpecContainer& HandleSpecContainer);
+
+	void CalculateFinalDamage(float& BaseDamgage, float Strength);
+
+	float GetAttribute(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAttribute Attribute) const;
+
+	
 };
