@@ -26,7 +26,7 @@ public:
 private:
 
 	UPROPERTY(VisibleAnywhere,Category = "RL")
-	TObjectPtr<URL_AS_Enemy>Character_AS;
+	TObjectPtr<URL_AS_Enemy>Character_AS;																																			
 
 	UPROPERTY(VisibleAnywhere, Category = "RL")
 	TObjectPtr<URL_ASC_Base>Character_ASC;

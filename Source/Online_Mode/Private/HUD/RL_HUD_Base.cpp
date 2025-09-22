@@ -5,8 +5,15 @@
 
 #include "HUD/RL_UW_BloodSlot.h"
 
+#include "WidgetController/WidgetController.h"
+
 void URL_HUD_Base::NativeOnInitialized()
 {
 	BloodSlot = CreateWidget<URL_UW_BloodSlot>(this, BloodSlotClass);
+}
+
+void URL_HUD_Base::SetWidgetController(UWidgetController* InWidgetController)
+{
+	WidgetController = InWidgetController;
 }
 	

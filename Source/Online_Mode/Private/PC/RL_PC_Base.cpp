@@ -9,6 +9,7 @@
 #include "AS/RL_AS_Player.h"
 #include "InputActionValue.h"
 #include "HUD/RL_HUD_Base.h"
+#include "WidgetController/WidgetController.h"
 
 void ARL_PC_Base::SetupInputComponent()
 {
@@ -44,7 +45,7 @@ void ARL_PC_Base::SendInputToASC(ERL_AbilityInputID InputID, bool bIsPressed) co
     {
         if (bIsPressed)
         {
-	            ASC->AbilityLocalInputPressed(static_cast<int32>(InputID));
+	        ASC->AbilityLocalInputPressed(static_cast<int32>(InputID));
 			UE_LOG(LogTemp, Warning, TEXT("Sending input to ASC: %d, %d"), static_cast<int32>(InputID), bIsPressed);
         }
         else
@@ -100,6 +101,52 @@ void ARL_PC_Base::SetIsNotAiming()
 	Cast<AOnline_ModeCharacter>(GetPawn())->Server_SetIsAiming(IsAiming);
 }
 
+void ARL_PC_Base::CreateHUDWidget()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	// 1. 确保在PC蓝图中指定了WidgetController类
+	if (!WidgetControllerClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ARL_PC_Base: WidgetControllerClass is not set!"));
+		return;
+	}
+
+	// 2. 创建 WidgetController 的实例
+	WidgetController = NewObject<UWidgetController>(this, WidgetControllerClass);
+
+	// 3. 构建参数并设置WidgetController
+	ARL_PS_Base* PS = GetPlayerState<ARL_PS_Base>();
+	if (PS && WidgetController)
+	{
+		// 从PlayerState获取ASC和AS
+		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
+		UAttributeSet* AS = PS->GetAttributeSet();
+		// 构建参数
+		const FWidgetControllerParams WCParams(this, PS, ASC, AS);
+		// 设置参数
+		WidgetController->SetWidgetControllerParams(WCParams);
+		// 绑定回调
+		WidgetController->BindCallbacksToDependencies();
+		// 广播初始值（这个通常由UI自己调用，但也可以在这里触发）
+		// WidgetController->BroadcastInitialValues();
+	}
+
+	// 4. 创建并显示主HUD控件
+	if (HUDClass)
+	{
+		HUDWidget = CreateWidget<URL_HUD_Base>(this, HUDClass);
+		if (HUDWidget)
+		{
+			HUDWidget->AddToViewport();
+			HUDWidget->SetWidgetController(WidgetController);
+		}
+	}
+}
+
 void ARL_PC_Base::BeginPlay()
 {
     Super::BeginPlay();
@@ -116,13 +163,7 @@ void ARL_PC_Base::BeginPlay()
 			}
 		}
 	}
-	if(HUDClass)
-	{	
-		HUDWidget = CreateWidget<URL_HUD_Base>(GetWorld(), HUDClass);
-
-		HUDWidget->AddToViewport();
-	}
-
+	CreateHUDWidget();
 	// 3. (推荐) 设置输入模式为只处理游戏输入
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);

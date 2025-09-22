@@ -14,6 +14,7 @@ struct FInputActionValue;
 class URL_HUD_Base;
 class ARL_PS_Base;
 class URL_HUD_Base;
+class UWidgetController;
 
 UCLASS()
 class ONLINE_MODE_API ARL_PC_Base : public APlayerController
@@ -62,6 +63,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RL_PC")
 	TObjectPtr<URL_HUD_Base>HUDWidget;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "RL_PC")
+	TObjectPtr<UWidgetController> WidgetController;
+
+	UPROPERTY(EditDefaultsOnly, Category = "HUD")
+	TSubclassOf<UWidgetController> WidgetControllerClass;
 protected:
 
 	/** Called for movement input */
@@ -86,6 +93,7 @@ protected:
 	UFUNCTION()
 	void SetIsNotAiming();
 
+	void CreateHUDWidget();
 private:
 
 	void OnShootInputPressed();

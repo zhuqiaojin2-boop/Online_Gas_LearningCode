@@ -188,7 +188,10 @@ const FGameplayEventData* TriggerEventData)
 			LocalCharacter,
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 		);
-
+		if (Ammo)
+		{
+			Ammo->FinishSpawning(SpawnTransform);
+		}
 		UAbilityTask_WaitGameplayEvent* WaitHitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag(FName("Event.Projectile.Hit")));
 		// 将我们的回调函数绑定到Task的委托上
 		WaitHitEventTask->EventReceived.AddDynamic(this, &URL_GA_ShootAtLocation::OnProjectileHit);

@@ -176,10 +176,6 @@ void ARL_Character_Base::InitializeAbilitySystem()
     if (!HasAuthority()) return;
 
     UAbilitySystemComponent* ASC = nullptr;
-    if (!ASC)
-    {
-        return;
-    }
     AActor* OwnerActor = nullptr;
     // 1. 尝试获取任何类型的PlayerState
     APlayerState* PS = GetPlayerState();
