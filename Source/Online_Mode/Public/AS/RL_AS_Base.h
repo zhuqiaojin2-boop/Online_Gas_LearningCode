@@ -62,6 +62,9 @@ public:
 	FGameplayAttributeData Level;
 	ATTRIBUTE_ACCESSORS(URL_AS_Base, Level)
 
+	UPROPERTY(BlueprintReadOnly, Category = "RL_Attributes", ReplicatedUsing = OnRep_AttackInterval)
+	FGameplayAttributeData AttackInterval;
+	ATTRIBUTE_ACCESSORS(URL_AS_Base, AttackInterval);
 	//---------元属性---------//
 	//不存储状态,仅用于GameEffect和PostGameplayEffectExecute之间瞬时传递
 	UPROPERTY(BlueprintReadOnly, Category = "RL_Attributes")
@@ -95,4 +98,6 @@ protected:
 	UFUNCTION()
 	virtual void OnRep_Level(const FGameplayAttributeData& OldLevel);
 
+	UFUNCTION()
+	virtual void OnRep_AttackInterval(const FGameplayAttributeData& OldAttackInterval);
 };

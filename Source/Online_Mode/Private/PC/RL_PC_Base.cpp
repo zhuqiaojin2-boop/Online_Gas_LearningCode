@@ -10,6 +10,8 @@
 #include "InputActionValue.h"
 #include "HUD/RL_HUD_Base.h"
 #include "WidgetController/WidgetController.h"
+#include "GameFramework/GameStateBase.h"
+#include "PlayerState_AttributeResult.h"
 
 void ARL_PC_Base::SetupInputComponent()
 {
@@ -61,6 +63,25 @@ void ARL_PC_Base::UpdateBloodSlot(float Health)
 	
 }
 
+TArray<APlayerState*> ARL_PC_Base::GetAllPlayerStates()
+{
+	TArray<APlayerState*> FoundPlayerStates;
+
+	// 获取对当前世界(World)的引用
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		// 从World中获取GameState
+		AGameStateBase* GS = World->GetGameState();
+		if (GS)
+		{
+			return GS->PlayerArray;
+		}
+	}
+	// 如果获取失败，返回一个空数组
+	return FoundPlayerStates;
+}
+
 float ARL_PC_Base::GetLocalCharacterHealth() const
 {
 	if (GetLocalPlayerStateWithASC())
@@ -101,51 +122,7 @@ void ARL_PC_Base::SetIsNotAiming()
 	Cast<AOnline_ModeCharacter>(GetPawn())->Server_SetIsAiming(IsAiming);
 }
 
-void ARL_PC_Base::CreateHUDWidget()
-{
-	if (!IsLocalPlayerController())
-	{
-		return;
-	}
 
-	// 1. 确保在PC蓝图中指定了WidgetController类
-	if (!WidgetControllerClass)
-	{
-		UE_LOG(LogTemp, Error, TEXT("ARL_PC_Base: WidgetControllerClass is not set!"));
-		return;
-	}
-
-	// 2. 创建 WidgetController 的实例
-	WidgetController = NewObject<UWidgetController>(this, WidgetControllerClass);
-
-	// 3. 构建参数并设置WidgetController
-	ARL_PS_Base* PS = GetPlayerState<ARL_PS_Base>();
-	if (PS && WidgetController)
-	{
-		// 从PlayerState获取ASC和AS
-		UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent();
-		UAttributeSet* AS = PS->GetAttributeSet();
-		// 构建参数
-		const FWidgetControllerParams WCParams(this, PS, ASC, AS);
-		// 设置参数
-		WidgetController->SetWidgetControllerParams(WCParams);
-		// 绑定回调
-		WidgetController->BindCallbacksToDependencies();
-		// 广播初始值（这个通常由UI自己调用，但也可以在这里触发）
-		// WidgetController->BroadcastInitialValues();
-	}
-
-	// 4. 创建并显示主HUD控件
-	if (HUDClass)
-	{
-		HUDWidget = CreateWidget<URL_HUD_Base>(this, HUDClass);
-		if (HUDWidget)
-		{
-			HUDWidget->AddToViewport();
-			HUDWidget->SetWidgetController(WidgetController);
-		}
-	}
-}
 
 void ARL_PC_Base::BeginPlay()
 {
@@ -168,6 +145,48 @@ void ARL_PC_Base::BeginPlay()
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
 }
+
+void ARL_PC_Base::CreateHUDWidget()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	// 确保在PC蓝图中指定了WidgetController类
+	if (!WidgetControllerClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ARL_PC_Base: WidgetControllerClass is not set!"));
+		return;
+	}
+
+	// 创建 WidgetController 的实例
+	WidgetController = NewObject<UWidgetController>(this, WidgetControllerClass);
+
+	// 构建参数并设置WidgetController
+	if (WidgetController)
+	{
+		FPlayerState_AttributeResult ReturnResult;
+		
+		ReturnResult.PSDataResults = GetAllPlayerStates();
+
+		WidgetController->SetWidgetControllerParams(ReturnResult);
+		// 绑定回调
+		WidgetController->BindCallbacksToDependencies();
+		// 广播初始值（这个通常由UI自己调用，但也可以在这里触发）
+		WidgetController->BroadcastInitialValues();
+	}
+	if (HUDClass)
+	{
+		HUDWidget = CreateWidget<URL_HUD_Base>(this, HUDClass);
+		if (HUDWidget)
+		{	
+			HUDWidget->AddToViewport();
+			HUDWidget->SetWidgetController(WidgetController);
+		}
+	}
+}
+
 void ARL_PC_Base::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings

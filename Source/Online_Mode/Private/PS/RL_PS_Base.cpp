@@ -69,6 +69,11 @@ void ARL_PS_Base::BeginPlay()
 	}
 }
 
+void ARL_PS_Base::OnRep_AvatarID()
+{
+	
+}
+
 
 
 //void ARL_PS_Base::InitializeAbilitySystem()

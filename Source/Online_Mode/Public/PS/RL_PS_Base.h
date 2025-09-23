@@ -3,6 +3,7 @@
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayAbilitySpec.h"
+#include "PlayerState_AttributeResult.h"
 #include "RL_PS_Base.generated.h"
 
  class URL_AS_Player;
@@ -21,6 +22,14 @@ public:
 
     virtual void BeginPlay() override;
 
+    UPROPERTY(VisibleAnywhere, Category = "RL_Gas")
+    FPlayerState_AttributeData WidgetControllerData;
+
+    FName GetPlayerName() const { return PlayerName; }
+
+    bool IsLeader() const { return bIsLeader; }
+
+    FName GetAvatarID() const { return AvatarID; }
 private:
 
     UPROPERTY(VisibleAnywhere, Category = "RL_Gas")
@@ -35,8 +44,23 @@ private:
     UPROPERTY(EditAnywhere, Category = "RL_Gas")
     TSubclassOf<URL_GE_Base>RL_GE_Class;
 
+    //在大厅进入游戏前需要初始化玩家信息,比如设置队长,设置名字,获取PlayerID(独一无二的玩家ID用于判断UI更新)
+
+    UPROPERTY(EditDefaultsOnly, Category = "RL")
+    FName PlayerName = {};
+
+    UPROPERTY(EditDefaultsOnly, Category = "RL")
+    TObjectPtr<UTexture2D> PlayerAvatar;
+
+    UPROPERTY(EditDefaultsOnly, Category = "RL")
+    bool bIsLeader;
+
     //void InitializeAbilitySystem();
 
+    UPROPERTY(ReplicatedUsing = OnRep_AvatarID) // 使用OnRep通知UI更新
+    FName AvatarID;
+
+    void OnRep_AvatarID();
 };
 // Called to grant initial abilities and effects
    //这是PlayerCharacter里的函数,如果需要在PlayerCharacter里搭载这个组件ASC,就要重写这两个函数

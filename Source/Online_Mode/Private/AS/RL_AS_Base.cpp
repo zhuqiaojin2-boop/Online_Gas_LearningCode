@@ -25,7 +25,18 @@ void URL_AS_Base::PreAttributeChange(const FGameplayAttribute& Attribute, float&
 	if (Attribute == GetHealthAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue,0.f,GetMaxHealth());
-		float Healthy = GetMaxHealth();
+	}
+	if (Attribute == GetAttack_frequencyAttribute())
+	{
+		// ...我们“派生”出新的“攻击间隔”属性值
+		if (NewValue > 0.f)
+		{
+			UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+			if (ASC)
+			{
+				ASC->SetNumericAttributeBase(GetAttackIntervalAttribute(), 1.0f / NewValue);
+			}
+		}
 	}
 }
 
@@ -76,6 +87,14 @@ void URL_AS_Base::PostGameplayEffectExecute(const FGameplayEffectModCallbackData
 			}
 		}
 	}
+
+	if (Data.EvaluatedData.Attribute == GetAttack_frequencyAttribute())
+	{
+		if (GetAttack_frequency() > 0.f)
+		{
+			SetAttackInterval(1.0f / GetAttack_frequency());
+		}
+	}
 }
 
 void URL_AS_Base::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -87,6 +106,8 @@ void URL_AS_Base::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME_CONDITION_NOTIFY(URL_AS_Base, Attack_frequency, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(URL_AS_Base, Defence, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(URL_AS_Base, Speed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(URL_AS_Base, AttackInterval, COND_None, REPNOTIFY_Always);
+
 }
 
 void URL_AS_Base::OnRep_Strength(const FGameplayAttributeData& OldStrength)
@@ -128,4 +149,9 @@ void URL_AS_Base::OnRep_Health(const FGameplayAttributeData& OldHealth)
 void URL_AS_Base::OnRep_Level(const FGameplayAttributeData& OldLevel)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(URL_AS_Base, Level, OldLevel);
+}
+
+void URL_AS_Base::OnRep_AttackInterval(const FGameplayAttributeData& OldAttackInterval)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URL_AS_Base, AttackInterval, OldAttackInterval);
 }

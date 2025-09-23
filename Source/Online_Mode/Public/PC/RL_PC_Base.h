@@ -104,4 +104,5 @@ private:
 
 	void UpdateBloodSlot(float Health);
 
+	TArray<APlayerState*> GetAllPlayerStates();
 };

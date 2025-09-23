@@ -14,15 +14,12 @@ class UWidgetControllerInterface : public UInterface
 	GENERATED_BODY()
 };
 
-/**
- * 
- */
 class ONLINE_MODE_API IWidgetControllerInterface
 {
 	GENERATED_BODY()
-
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
+
 public:
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "WidgetController")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "RL")
 	void SetWidgetController(UWidgetController* InWidgetController);
 };

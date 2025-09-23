@@ -3,19 +3,21 @@
 
 #include "WidgetController/WidgetController.h"
 
-void UWidgetController::SetWidgetControllerParams(const FWidgetControllerParams& InParams)
+void UWidgetController::SetWidgetControllerParams(const FPlayerState_AttributeResult& Result)
 {
-    PlayerController = InParams.PlayerController;
-    PlayerState = InParams.PlayerState;
-    AbilitySystemComponent = InParams.AbilitySystemComponent;
-    AttributeSet = InParams.AttributeSet;
+    TransResults = Result;
 }
 
 void UWidgetController::BroadcastInitialValues()
 {
-
+    
 }
 void UWidgetController::BindCallbacksToDependencies()
 {
 
+}
+
+TArray<APlayerState*> UWidgetController::GetPlayerStates() const
+{
+    return TransResults.PSDataResults;
 }
